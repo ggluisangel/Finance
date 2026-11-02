@@ -1,0 +1,6 @@
+{
+  "name": "FinanAI - Agente de Finanzas iOS PWA",
+  "description": "Agente de finanzas personal con IA, registro de gastos e ingresos por voz o texto, control de presupuesto mensual, notificaciones push y estadísticas a detalle.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
