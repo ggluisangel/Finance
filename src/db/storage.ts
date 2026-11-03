@@ -325,3 +325,28 @@ export function getFinancialSummary(year?: number, month?: number) {
     monthlyTxs
   };
 }
+
+export async function resetUserDataAPI(): Promise<boolean> {
+  const user = getUserProfile();
+  if (!user.id) return false;
+
+  try {
+    const res = await fetch(`/api/user/reset/${user.id}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    if (data.success) {
+      setLocalTransactions([]);
+      if (data.chatMessage) {
+        setLocalChatMessages([data.chatMessage]);
+      } else {
+        setLocalChatMessages([]);
+      }
+      return true;
+    }
+  } catch (e) {
+    console.error('Error resetting user data:', e);
+  }
+  return false;
+}
+

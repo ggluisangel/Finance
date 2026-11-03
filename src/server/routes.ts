@@ -388,4 +388,32 @@ router.post('/agent', async (req, res) => {
   }
 });
 
+// 10. RESET USER DATA TO 0
+router.delete('/user/reset/:userId', (req, res) => {
+  const { userId } = req.params;
+  try {
+    db.prepare('DELETE FROM transactions WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM chat_messages WHERE user_id = ?').run(userId);
+    
+    const nowIso = new Date().toISOString();
+    const welcomeMsg = {
+      id: genId('msg'),
+      userId,
+      role: 'agent',
+      content: `🇨🇺 Cuenta restablecida a 0. Todos tus movimientos y chat anterior han sido eliminados de la base de datos de SQLite.`,
+      timestamp: nowIso
+    };
+
+    db.prepare(`
+      INSERT INTO chat_messages (id, user_id, role, content, timestamp)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(welcomeMsg.id, welcomeMsg.userId, welcomeMsg.role, welcomeMsg.content, welcomeMsg.timestamp);
+
+    res.json({ success: true, chatMessage: welcomeMsg });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
+
