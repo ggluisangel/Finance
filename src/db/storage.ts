@@ -1,12 +1,13 @@
 import { UserProfile, Transaction, ChatMessage, CategorySummary, DailySummary } from '../types/finance';
 
-const PROFILE_KEY = 'finan_ai_user_profile_cuba_v4';
-const TRANSACTIONS_KEY = 'finan_ai_transactions_cuba_v4';
-const CHAT_HISTORY_KEY = 'finan_ai_chat_history_cuba_v4';
+const PROFILE_KEY = 'finan_ai_user_profile_sqlite_v1';
+const TRANSACTIONS_KEY = 'finan_ai_transactions_sqlite_v1';
+const CHAT_HISTORY_KEY = 'finan_ai_chat_history_sqlite_v1';
+const SESSION_KEY = 'finan_ai_auth_session_sqlite_v1';
 
 export const DEFAULT_PROFILE: UserProfile = {
-  id: 'user_main',
-  name: 'Luis Ángel',
+  id: '',
+  name: '',
   currency: 'CUP ($)',
   customApiKey: '',
   pushEnabled: true,
@@ -18,108 +19,45 @@ export const DEFAULT_PROFILE: UserProfile = {
   ollamaApiKey: ''
 };
 
-// Seed realistic transactions for variable cash income & expenses in Cuba
-function getInitialSeedTransactions(): Transaction[] {
-  const now = new Date();
-  
-  const daysAgo = (days: number, hour = 14) => {
-    const d = new Date(now);
-    d.setDate(d.getDate() - days);
-    d.setHours(hour, 0, 0, 0);
-    return d.toISOString();
-  };
-
-  return [
-    {
-      id: 'tx_cuba_var_1',
-      title: 'Dinero generado en negocio / servicio',
-      amount: 18000,
-      type: 'income',
-      category: 'Trabajos & Servicios',
-      date: daysAgo(4, 10),
-      notes: 'Cobrado en efectivo al instante',
-      rawUtterance: 'hice 18000 pesos en un trabajo'
-    },
-    {
-      id: 'tx_cuba_var_2',
-      title: 'Venta de productos / mercancía',
-      amount: 12500,
-      type: 'income',
-      category: 'Ventas & Negocio',
-      date: daysAgo(2, 16),
-      notes: 'Efectivo recibido de cliente',
-      rawUtterance: 'me entraron 12500 de una venta'
-    },
-    {
-      id: 'tx_cuba_var_3',
-      title: 'Gasolina y pasajes botero',
-      amount: 1800,
-      type: 'expense',
-      category: 'Transporte & Boteros',
-      date: daysAgo(3, 11),
-      notes: 'Botero y gasolina en efectivo',
-      rawUtterance: 'gaste 1800 en gasolina y botero'
-    },
-    {
-      id: 'tx_cuba_var_4',
-      title: 'Cervezas Bucanero y comida afuera',
-      amount: 1200,
-      type: 'expense',
-      category: 'Cerveza & Recreación',
-      date: daysAgo(2, 21),
-      notes: 'Salida con amigos',
-      rawUtterance: '1200 en cerveza y comida'
-    },
-    {
-      id: 'tx_cuba_var_5',
-      title: 'Mandados de la bodega, arroz y viandas',
-      amount: 3400,
-      type: 'expense',
-      category: 'Bodega & Alimentos',
-      date: daysAgo(1, 15),
-      notes: 'Alimentos en efectivo',
-      rawUtterance: 'hoy gaste 3400 en bodega y mandados'
-    },
-    {
-      id: 'tx_cuba_var_6',
-      title: 'Recarga ETECSA paquete datos',
-      amount: 500,
-      type: 'expense',
-      category: 'Comunicaciones & ETECSA',
-      date: daysAgo(0, 9),
-      notes: 'Paquete de datos en efectivo',
-      rawUtterance: '500 pesos de recarga ETECSA'
-    }
-  ];
-}
-
-function getInitialChatMessages(): ChatMessage[] {
-  return [
-    {
-      id: 'msg_seed_cuba_v4',
-      role: 'agent',
-      content: '🇨🇺 ¡Hola! Soy **FinanAI Cuba**, tu agente para controlar tu **efectivo diario en vivo**.\n\nSoporta modelos de **Ollama Cloud** (Llama 3.2, Qwen 2.5, DeepSeek R1) y **Gemini AI**.\n\nPuedes escribirme o hablarme en voz normal:\n\n* *"Hice 12000 pesos hoy en el negocio y gasté 1500 en gasolina y 800 en comida"*\n* *"Cobré 4500 de un servicio"*\n\nYo sumaré y restaré todo al instante.',
-      timestamp: new Date().toISOString()
-    }
-  ];
-}
-
 function emitChange() {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('finan_storage_updated'));
   }
 }
 
+// Session API
+export function getStoredSession(): { userId: string; username: string } | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function saveSessionData(data: { user: UserProfile; transactions: Transaction[]; chatMessages: ChatMessage[] }) {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: data.user.id, username: data.user.name }));
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(data.user));
+  localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(data.transactions));
+  localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(data.chatMessages));
+  emitChange();
+}
+
+export function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(PROFILE_KEY);
+  localStorage.removeItem(TRANSACTIONS_KEY);
+  localStorage.removeItem(CHAT_HISTORY_KEY);
+  emitChange();
+}
+
 // Profile API
 export function getUserProfile(): UserProfile {
   try {
     const raw = localStorage.getItem(PROFILE_KEY);
-    if (!raw) {
-      localStorage.setItem(PROFILE_KEY, JSON.stringify(DEFAULT_PROFILE));
-      return DEFAULT_PROFILE;
-    }
-    const parsed = JSON.parse(raw);
-    return { ...DEFAULT_PROFILE, ...parsed };
+    if (!raw) return DEFAULT_PROFILE;
+    return JSON.parse(raw);
   } catch {
     return DEFAULT_PROFILE;
   }
@@ -130,6 +68,27 @@ export function saveUserProfile(profile: Partial<UserProfile>): UserProfile {
   const updated = { ...current, ...profile };
   localStorage.setItem(PROFILE_KEY, JSON.stringify(updated));
   emitChange();
+
+  // Async server sync if online
+  if (typeof navigator !== 'undefined' && navigator.onLine && updated.id) {
+    fetch('/api/user/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: updated.id,
+        currency: updated.currency,
+        initialCashBalance: updated.initialCashBalance,
+        aiProvider: updated.aiProvider,
+        ollamaUrl: updated.ollamaUrl,
+        ollamaModel: updated.ollamaModel,
+        ollamaApiKey: updated.ollamaApiKey,
+        customApiKey: updated.customApiKey,
+        pushEnabled: updated.pushEnabled,
+        reminderTime: updated.reminderTime
+      })
+    }).catch(e => console.warn('Offline profile update queued locally:', e));
+  }
+
   return updated;
 }
 
@@ -137,26 +96,50 @@ export function saveUserProfile(profile: Partial<UserProfile>): UserProfile {
 export function getTransactions(): Transaction[] {
   try {
     const raw = localStorage.getItem(TRANSACTIONS_KEY);
-    if (!raw) {
-      const seeds = getInitialSeedTransactions();
-      localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(seeds));
-      return seeds;
-    }
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
     return [];
   }
 }
 
+export function setLocalTransactions(txs: Transaction[]) {
+  localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(txs));
+  emitChange();
+}
+
 export function addTransactions(newTxs: Omit<Transaction, 'id'>[]): Transaction[] {
   const current = getTransactions();
+  const user = getUserProfile();
+
   const created: Transaction[] = newTxs.map(t => ({
     ...t,
-    id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
+    id: (t as any).id || `tx_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
   }));
+
   const updated = [...created, ...current];
   localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(updated));
   emitChange();
+
+  // Async server sync
+  if (typeof navigator !== 'undefined' && navigator.onLine && user.id) {
+    created.forEach(tx => {
+      fetch('/api/transactions/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          title: tx.title,
+          amount: tx.amount,
+          type: tx.type,
+          category: tx.category,
+          notes: tx.notes,
+          date: tx.date
+        })
+      }).catch(e => console.warn('Offline transaction creation saved locally:', e));
+    });
+  }
+
   return created;
 }
 
@@ -172,6 +155,15 @@ export function updateTransaction(id: string, updates: Partial<Transaction>): Tr
   current[idx] = { ...current[idx], ...updates };
   localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(current));
   emitChange();
+
+  if (typeof navigator !== 'undefined' && navigator.onLine) {
+    fetch(`/api/transactions/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(current[idx])
+    }).catch(e => console.warn('Offline update saved locally:', e));
+  }
+
   return current[idx];
 }
 
@@ -180,6 +172,13 @@ export function deleteTransaction(id: string): boolean {
   const filtered = current.filter(t => t.id !== id);
   localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(filtered));
   emitChange();
+
+  if (typeof navigator !== 'undefined' && navigator.onLine) {
+    fetch(`/api/transactions/${id}`, {
+      method: 'DELETE'
+    }).catch(e => console.warn('Offline delete saved locally:', e));
+  }
+
   return true;
 }
 
@@ -192,15 +191,16 @@ export function clearAllTransactions() {
 export function getChatMessages(): ChatMessage[] {
   try {
     const raw = localStorage.getItem(CHAT_HISTORY_KEY);
-    if (!raw) {
-      const initial = getInitialChatMessages();
-      localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(initial));
-      return initial;
-    }
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
     return [];
   }
+}
+
+export function setLocalChatMessages(msgs: ChatMessage[]) {
+  localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(msgs));
+  emitChange();
 }
 
 export function addChatMessage(msg: Omit<ChatMessage, 'id'>): ChatMessage {
@@ -216,9 +216,13 @@ export function addChatMessage(msg: Omit<ChatMessage, 'id'>): ChatMessage {
 }
 
 export function clearChatHistory() {
-  const initial = getInitialChatMessages();
-  localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(initial));
+  const user = getUserProfile();
+  localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify([]));
   emitChange();
+
+  if (typeof navigator !== 'undefined' && navigator.onLine && user.id) {
+    fetch(`/api/chat/clear/${user.id}`, { method: 'DELETE' }).catch(e => console.warn(e));
+  }
 }
 
 // Variable Income Cash Flow Summary Calculations

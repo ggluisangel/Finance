@@ -3,31 +3,15 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig, Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import { handleAgentRequest } from './src/server/agentHandler.ts';
+import app from './server.ts';
 
 function apiDevPlugin(): Plugin {
   return {
     name: 'api-dev-plugin',
     configureServer(server) {
-      server.middlewares.use(async (req, res, next) => {
-        if (req.url === '/api/agent' && req.method === 'POST') {
-          let bodyStr = '';
-          req.on('data', chunk => {
-            bodyStr += chunk;
-          });
-          req.on('end', async () => {
-            try {
-              const body = JSON.parse(bodyStr || '{}');
-              const result = await handleAgentRequest(body);
-              res.statusCode = 200;
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ success: true, ...result }));
-            } catch (err: any) {
-              res.statusCode = 500;
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ success: false, error: err.message || 'Error en IA' }));
-            }
-          });
+      server.middlewares.use((req, res, next) => {
+        if (req.url?.startsWith('/api/')) {
+          app(req as any, res as any, next);
           return;
         }
         next();
@@ -49,7 +33,7 @@ export default defineConfig(() => {
           id: '/',
           name: 'FinanAI - Agente de Finanzas iOS PWA',
           short_name: 'FinanAI',
-          description: 'Agente de finanzas personal con IA, registro de gastos e ingresos, control de presupuesto y notificaciones push.',
+          description: 'Agente de finanzas personal en efectivo con base de datos SQLite y acceso PWA offline.',
           theme_color: '#020617',
           background_color: '#020617',
           display: 'standalone',

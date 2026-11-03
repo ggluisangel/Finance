@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserProfile, ChatMessage, Transaction } from '../types/finance';
 import { getFinancialSummary, addChatMessage, addTransactions, getChatMessages, clearChatHistory } from '../db/storage';
-import { Bot, Send, Mic, MicOff, Sparkles, Trash2, CheckCircle2, RefreshCw, Cpu, MessageSquare } from 'lucide-react';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { Bot, Send, Mic, MicOff, Sparkles, Trash2, CheckCircle2, WifiOff, Lock } from 'lucide-react';
 
 interface AgentTabProps {
   profile: UserProfile;
@@ -14,6 +15,7 @@ export const AgentTab: React.FC<AgentTabProps> = ({ profile }) => {
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
 
+  const isOnline = useOnlineStatus();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -68,6 +70,11 @@ export const AgentTab: React.FC<AgentTabProps> = ({ profile }) => {
   }, []);
 
   const toggleVoiceInput = () => {
+    if (!isOnline) {
+      alert('Estás en modo sin conexión. Puedes revisar tus datos pero para usar la IA necesitas conexión.');
+      return;
+    }
+
     if (!speechSupported || !recognitionRef.current) {
       alert('Tu navegador no soporta entrada de voz directa. Puedes escribir tu mensaje en texto.');
       return;
@@ -98,6 +105,11 @@ export const AgentTab: React.FC<AgentTabProps> = ({ profile }) => {
     const text = (textToSend || inputPrompt).trim();
     if (!text || loading) return;
 
+    if (!isOnline) {
+      alert('Modo Sin Conexión: La PWA te permite visualizar todas tus estadísticas y conversaciones guardadas. Para enviar nuevos mensajes al agente de IA se requiere conexión.');
+      return;
+    }
+
     setInputPrompt('');
 
     // 1. Save User Message
@@ -110,11 +122,12 @@ export const AgentTab: React.FC<AgentTabProps> = ({ profile }) => {
     setLoading(true);
 
     try {
-      // 2. Call Server API endpoint for Gemini / Ollama Cloud Agent
+      // 2. Call Server API endpoint with userId
       const res = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          userId: profile.id,
           prompt: text,
           aiProvider: profile.aiProvider,
           ollamaUrl: profile.ollamaUrl,
@@ -131,17 +144,18 @@ export const AgentTab: React.FC<AgentTabProps> = ({ profile }) => {
         throw new Error(data.error || 'No se pudo procesar el mensaje con la IA.');
       }
 
-      // 3. Save extracted transactions to local DB
+      // 3. Save extracted transactions to local DB cache
       let createdTxs: Transaction[] = [];
       if (data.transactions && data.transactions.length > 0) {
         createdTxs = addTransactions(
           data.transactions.map((t: any) => ({
+            id: t.id,
             title: t.title,
             amount: t.amount,
             type: t.type,
             category: t.category,
             notes: t.notes || (profile.aiProvider === 'ollama' ? 'Vía Ollama' : 'En efectivo'),
-            date: new Date().toISOString(),
+            date: t.date || new Date().toISOString(),
             rawUtterance: text
           }))
         );
@@ -176,6 +190,16 @@ export const AgentTab: React.FC<AgentTabProps> = ({ profile }) => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-140px)] pb-24 relative">
+      {/* Offline Banner when disconnected */}
+      {!isOnline && (
+        <div className="mb-2 bg-amber-500/20 border border-amber-500/40 text-amber-200 p-2.5 rounded-2xl text-xs font-semibold flex items-center justify-between shadow-lg">
+          <div className="flex items-center gap-2">
+            <WifiOff className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>Modo Lectura Sin Conexión — Todo tu historial de chat y movimientos están disponibles para visualizar.</span>
+          </div>
+        </div>
+      )}
+
       {/* Exclusive Chat Header Toolbar */}
       <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-2xl flex items-center justify-between shrink-0 mb-3 shadow-md backdrop-blur-md">
         <div className="flex items-center gap-2.5">
@@ -189,7 +213,7 @@ export const AgentTab: React.FC<AgentTabProps> = ({ profile }) => {
                 {profile.aiProvider === 'ollama' ? `Ollama (${profile.ollamaModel || 'llama3.2'})` : 'Gemini AI'}
               </span>
             </div>
-            <p className="text-[10px] text-slate-400">Conversa en voz o texto para controlar tu efectivo</p>
+            <p className="text-[10px] text-slate-400">Usuario SQLite: <strong>{profile.name || 'Invitado'}</strong></p>
           </div>
         </div>
 
@@ -236,7 +260,7 @@ export const AgentTab: React.FC<AgentTabProps> = ({ profile }) => {
             >
               <div className="flex items-center justify-between text-[11px] opacity-80">
                 <span className="font-bold flex items-center gap-1">
-                  {msg.role === 'user' ? 'Tú (Efectivo)' : `FinanAI ${profile.aiProvider === 'ollama' ? 'Ollama' : 'Gemini'}`}
+                  {msg.role === 'user' ? `${profile.name || 'Tú'} (Efectivo)` : `FinanAI ${profile.aiProvider === 'ollama' ? 'Ollama' : 'Gemini'}`}
                 </span>
                 <span>
                   {new Date(msg.timestamp).toLocaleTimeString('es-CU', { hour: '2-digit', minute: '2-digit' })}
@@ -251,7 +275,7 @@ export const AgentTab: React.FC<AgentTabProps> = ({ profile }) => {
               {msg.transactions && msg.transactions.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-slate-800 space-y-2">
                   <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Registrado en BD Local ({msg.transactions.length})
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Registrado en BD SQLite ({msg.transactions.length})
                   </span>
                   <div className="space-y-1.5">
                     {msg.transactions.map(t => (
@@ -282,7 +306,7 @@ export const AgentTab: React.FC<AgentTabProps> = ({ profile }) => {
                 <Bot className="w-3.5 h-3.5 animate-spin" />
               </div>
               <span>
-                Procesando con {profile.aiProvider === 'ollama' ? `Ollama Cloud (${profile.ollamaModel || 'llama3.2'})` : 'Gemini AI'}...
+                Sincronizando con SQLite y procesando con {profile.aiProvider === 'ollama' ? `Ollama Cloud (${profile.ollamaModel || 'llama3.2'})` : 'Gemini AI'}...
               </span>
             </div>
           </div>
@@ -291,7 +315,7 @@ export const AgentTab: React.FC<AgentTabProps> = ({ profile }) => {
         <div ref={chatEndRef} />
       </div>
 
-      {/* Floating Bottom Input Controls (Fitted perfectly above bottom TabBar) */}
+      {/* Floating Bottom Input Controls */}
       <div className="sticky bottom-0 left-0 right-0 z-30 pt-2 pb-1 bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent">
         <div className="max-w-xl mx-auto flex items-center gap-2">
           {/* Voice Input Button */}
@@ -314,7 +338,7 @@ export const AgentTab: React.FC<AgentTabProps> = ({ profile }) => {
               value={inputPrompt}
               onChange={e => setInputPrompt(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-              placeholder={isListening ? 'Escuchando tu voz...' : 'Escribe o habla: hice 15000 en un trabajo...'}
+              placeholder={isListening ? 'Escuchando tu voz...' : isOnline ? 'Escribe o habla: hice 15000 en un trabajo...' : 'Sin conexión — Modo lectura de historial'}
               disabled={loading}
               className="w-full h-12 pl-4 pr-11 rounded-2xl bg-slate-900 border border-slate-800 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
             />

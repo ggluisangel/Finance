@@ -1,32 +1,21 @@
 import express from 'express';
-import { handleAgentRequest } from './src/server/agentHandler.ts';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import apiRouter from './src/server/routes.js';
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();
+export const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json({ limit: '5mb' }));
 
-// API Route for AI Finance Agent
-app.post('/api/agent', async (req, res) => {
-  try {
-    const result = await handleAgentRequest(req.body);
-    res.json({ success: true, ...result });
-  } catch (error: any) {
-    console.error("Error in /api/agent:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message || "Error procesando el mensaje con la IA."
-    });
-  }
-});
+// API Routes
+app.use('/api', apiRouter);
 
 // Serve static assets in production
 const distPath = path.join(__dirname, 'dist');
@@ -39,9 +28,12 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
-if (process.env.NODE_ENV !== 'test') {
+// Only listen when running directly as main server entrypoint
+const isMain = process.argv[1] && (process.argv[1].endsWith('server.ts') || process.argv[1].endsWith('server.js'));
+
+if (isMain) {
   app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on port ${PORT} with SQLite DB`);
   });
 }
 
