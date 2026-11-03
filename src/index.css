@@ -6,38 +6,30 @@
     color-scheme: dark;
   }
   html, body, #root {
-    height: 100%;
+    min-height: 100%;
     width: 100%;
-    overflow: hidden !important;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-  }
-  body {
     background-color: #020617;
     color: #f8fafc;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
     -webkit-tap-highlight-color: transparent;
-    user-select: none;
+    overflow-y: auto;
   }
 }
 
-/* Custom scrollbars ONLY for chat container */
+/* Custom scrollbars */
 ::-webkit-scrollbar {
-  width: 3px;
-  height: 3px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.4);
 }
 
 .no-scrollbar::-webkit-scrollbar {
