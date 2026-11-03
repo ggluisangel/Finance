@@ -162,9 +162,10 @@ export async function handleAgentRequest(body: AgentRequestBody) {
   }
 
   // 2. GOOGLE GEMINI ROUTE (DEFAULT)
+  const FIXED_API_KEY = '2f92aceb88bd47c8bfcb5bf3bed7ab94.6FNIUD0S12K05tQz37gBMPxu';
   const apiKeyToUse = (userApiKey && userApiKey.trim().length > 5) 
     ? userApiKey.trim() 
-    : (process.env.GEMINI_API_KEY || '');
+    : (FIXED_API_KEY || process.env.GEMINI_API_KEY || '');
 
   if (!apiKeyToUse) {
     throw new Error("No se ha configurado la API Key de Gemini. Agrégala en los Ajustes o activa la opción de Ollama Cloud.");

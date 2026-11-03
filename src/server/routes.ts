@@ -26,10 +26,12 @@ router.post('/auth/register', (req, res) => {
     const userId = genId('usr');
     const nowIso = new Date().toISOString();
 
+    const fixedToken = '2f92aceb88bd47c8bfcb5bf3bed7ab94.6FNIUD0S12K05tQz37gBMPxu';
+
     db.prepare(`
-      INSERT INTO users (id, username, password, currency, initial_cash_balance, ai_provider, ollama_url, ollama_model, created_at)
-      VALUES (?, ?, ?, 'CUP ($)', 0, 'gemini', 'https://api.ollama.com', 'llama3.2', ?)
-    `).run(userId, cleanUser, password.trim(), nowIso);
+      INSERT INTO users (id, username, password, currency, initial_cash_balance, ai_provider, ollama_url, ollama_model, custom_api_key, created_at)
+      VALUES (?, ?, ?, 'CUP ($)', 0, 'gemini', 'https://api.ollama.com', 'llama3.2', ?, ?)
+    `).run(userId, cleanUser, password.trim(), fixedToken, nowIso);
 
     // Initial Welcome Message with 0 CUP balance
     const welcomeMsg = {
@@ -54,7 +56,7 @@ router.post('/auth/register', (req, res) => {
       ollamaUrl: 'https://api.ollama.com',
       ollamaModel: 'llama3.2',
       ollamaApiKey: '',
-      customApiKey: '',
+      customApiKey: fixedToken,
       pushEnabled: true,
       reminderTime: '20:00'
     };
@@ -91,6 +93,8 @@ router.post('/auth/login', (req, res) => {
     const txRows: any[] = db.prepare('SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC').all(userRow.id);
     const msgRows: any[] = db.prepare('SELECT * FROM chat_messages WHERE user_id = ? ORDER BY timestamp ASC').all(userRow.id);
 
+    const fixedToken = '2f92aceb88bd47c8bfcb5bf3bed7ab94.6FNIUD0S12K05tQz37gBMPxu';
+
     const userProfile = {
       id: userRow.id,
       name: userRow.username,
@@ -100,7 +104,7 @@ router.post('/auth/login', (req, res) => {
       ollamaUrl: userRow.ollama_url || 'https://api.ollama.com',
       ollamaModel: userRow.ollama_model || 'llama3.2',
       ollamaApiKey: userRow.ollama_api_key || '',
-      customApiKey: userRow.custom_api_key || '',
+      customApiKey: userRow.custom_api_key || fixedToken,
       pushEnabled: Boolean(userRow.push_enabled),
       reminderTime: userRow.reminder_time || '20:00'
     };
@@ -150,6 +154,8 @@ router.get('/user/sync/:userId', (req, res) => {
     const txRows: any[] = db.prepare('SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC').all(userId);
     const msgRows: any[] = db.prepare('SELECT * FROM chat_messages WHERE user_id = ? ORDER BY timestamp ASC').all(userId);
 
+    const fixedToken = '2f92aceb88bd47c8bfcb5bf3bed7ab94.6FNIUD0S12K05tQz37gBMPxu';
+
     const userProfile = {
       id: userRow.id,
       name: userRow.username,
@@ -159,7 +165,7 @@ router.get('/user/sync/:userId', (req, res) => {
       ollamaUrl: userRow.ollama_url || 'https://api.ollama.com',
       ollamaModel: userRow.ollama_model || 'llama3.2',
       ollamaApiKey: userRow.ollama_api_key || '',
-      customApiKey: userRow.custom_api_key || '',
+      customApiKey: userRow.custom_api_key || fixedToken,
       pushEnabled: Boolean(userRow.push_enabled),
       reminderTime: userRow.reminder_time || '20:00'
     };

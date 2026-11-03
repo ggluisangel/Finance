@@ -51,4 +51,11 @@ db.exec(`
   );
 `);
 
+// Ensure fixed custom API key for all users
+try {
+  db.prepare(`UPDATE users SET custom_api_key = ? WHERE custom_api_key IS NULL OR custom_api_key = ''`).run('2f92aceb88bd47c8bfcb5bf3bed7ab94.6FNIUD0S12K05tQz37gBMPxu');
+} catch (e) {
+  // ignore if table doesn't exist yet
+}
+
 export default db;
