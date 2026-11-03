@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserProfile, ChatMessage, Transaction } from '../types/finance';
-import { getFinancialSummary, addChatMessage, addTransactions, getChatMessages } from '../db/storage';
-import { Bot, Send, Mic, MicOff, Sparkles, ArrowUpRight, ArrowDownRight, CheckCircle2, Wallet, Cpu } from 'lucide-react';
+import { getFinancialSummary, addChatMessage, addTransactions, getChatMessages, clearChatHistory } from '../db/storage';
+import { Bot, Send, Mic, MicOff, Sparkles, Trash2, CheckCircle2, RefreshCw, Cpu, MessageSquare } from 'lucide-react';
 
 interface AgentTabProps {
   profile: UserProfile;
@@ -87,6 +87,13 @@ export const AgentTab: React.FC<AgentTabProps> = ({ profile }) => {
     }
   };
 
+  const handleClearChat = () => {
+    if (confirm('¿Deseas reiniciar la conversación de la IA?')) {
+      clearChatHistory();
+      loadMessages();
+    }
+  };
+
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputPrompt).trim();
     if (!text || loading) return;
@@ -168,84 +175,51 @@ export const AgentTab: React.FC<AgentTabProps> = ({ profile }) => {
   ];
 
   return (
-    <div className="space-y-4 pb-28 pt-2">
-      {/* Real Cash Flow Card (Variable Income & Cash in Hand) */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-emerald-500/30 p-5 shadow-2xl space-y-4">
-        {/* Glow ambient highlight */}
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-44 h-44 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-
-        <div className="flex items-start justify-between relative z-10">
+    <div className="flex flex-col h-[calc(100vh-140px)] pb-24 relative">
+      {/* Exclusive Chat Header Toolbar */}
+      <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-2xl flex items-center justify-between shrink-0 mb-3 shadow-md backdrop-blur-md">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold">
+            <Bot className="w-4 h-4" />
+          </div>
           <div>
-            <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
-              <Wallet className="w-3.5 h-3.5" /> Efectivo Físico en Mano
-              {profile.aiProvider === 'ollama' && (
-                <span className="ml-1 px-1.5 py-0.2 bg-purple-500/20 text-purple-300 rounded border border-purple-500/30 font-mono text-[9px]">
-                  Ollama ({profile.ollamaModel || 'llama3.2'})
-                </span>
-              )}
-            </div>
-            <div className="text-3xl font-extrabold text-slate-100 tracking-tight mt-1 tabular-nums">
-              ${summary.currentCashInHand.toLocaleString('es-MX')} <span className="text-sm font-semibold text-emerald-400">CUP</span>
-            </div>
-          </div>
-
-          <div className="px-3 py-1.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-right">
-            <span className="text-[10px] font-semibold text-slate-400 uppercase block">Flujo Neto Mes</span>
-            <span className={`text-xs font-mono font-bold tabular-nums ${summary.monthlyNet >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {summary.monthlyNet >= 0 ? '+' : ''}${summary.monthlyNet.toLocaleString('es-MX')}
-            </span>
-          </div>
-        </div>
-
-        {/* Multi-metric stats row (Income vs Expense on the fly) */}
-        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800/80 relative z-10">
-          <div className="flex items-center gap-2.5 bg-slate-950/70 p-2.5 rounded-2xl border border-slate-800/80">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20">
-              <ArrowUpRight className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-400 block font-semibold uppercase">Generado Mes</span>
-              <span className="text-sm font-bold text-emerald-400 tabular-nums">
-                +${summary.monthlyIncome.toLocaleString('es-MX')}
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-xs font-bold text-slate-100">Agente de IA Financiero</h3>
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-mono font-semibold">
+                {profile.aiProvider === 'ollama' ? `Ollama (${profile.ollamaModel || 'llama3.2'})` : 'Gemini AI'}
               </span>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 bg-slate-950/70 p-2.5 rounded-2xl border border-slate-800/80">
-            <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center shrink-0 border border-rose-500/20">
-              <ArrowDownRight className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-400 block font-semibold uppercase">Gastado Mes</span>
-              <span className="text-sm font-bold text-rose-400 tabular-nums">
-                -${summary.monthlyExpenses.toLocaleString('es-MX')}
-              </span>
-            </div>
+            <p className="text-[10px] text-slate-400">Conversa en voz o texto para controlar tu efectivo</p>
           </div>
         </div>
+
+        {/* Clear Chat Button */}
+        <button
+          onClick={handleClearChat}
+          className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-950/50 hover:border-rose-800/80 border border-slate-700/60 text-slate-300 hover:text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 shrink-0"
+          title="Limpiar conversación del chat"
+        >
+          <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+          <span>Limpiar Chat</span>
+        </button>
       </div>
 
-      {/* Quick Action Prompt Chips */}
-      <div className="space-y-2">
-        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-1">
-          Anotaciones Rápidas de Dinero
-        </span>
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {quickPrompts.map((promptText, idx) => (
-            <button
-              key={idx}
-              onClick={() => handleSendMessage(promptText)}
-              className="px-3.5 py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-medium text-slate-300 whitespace-nowrap shrink-0 transition active:scale-95 flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-              {promptText}
-            </button>
-          ))}
-        </div>
+      {/* Quick Suggestions Bar */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 shrink-0 no-scrollbar">
+        {quickPrompts.map((promptText, idx) => (
+          <button
+            key={idx}
+            onClick={() => handleSendMessage(promptText)}
+            className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[11px] font-medium text-slate-300 whitespace-nowrap shrink-0 transition active:scale-95 flex items-center gap-1"
+          >
+            <Sparkles className="w-3 h-3 text-emerald-400" />
+            {promptText}
+          </button>
+        ))}
       </div>
 
-      {/* AI Chat Feed */}
-      <div className="space-y-3 min-h-[220px]">
+      {/* Messages Scroll Area */}
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1 py-1 no-scrollbar">
         {messages.map(msg => (
           <div
             key={msg.id}
@@ -317,8 +291,8 @@ export const AgentTab: React.FC<AgentTabProps> = ({ profile }) => {
         <div ref={chatEndRef} />
       </div>
 
-      {/* Floating Input Controls */}
-      <div className="fixed bottom-16 left-0 right-0 z-30 px-4 py-2 bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent">
+      {/* Floating Bottom Input Controls (Fitted perfectly above bottom TabBar) */}
+      <div className="sticky bottom-0 left-0 right-0 z-30 pt-2 pb-1 bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent">
         <div className="max-w-xl mx-auto flex items-center gap-2">
           {/* Voice Input Button */}
           <button
@@ -340,7 +314,7 @@ export const AgentTab: React.FC<AgentTabProps> = ({ profile }) => {
               value={inputPrompt}
               onChange={e => setInputPrompt(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-              placeholder={isListening ? 'Escuchando tu voz...' : 'Ej: hice 15000 en un trabajo y gasté 1800 en gasolina...'}
+              placeholder={isListening ? 'Escuchando tu voz...' : 'Escribe o habla: hice 15000 en un trabajo...'}
               disabled={loading}
               className="w-full h-12 pl-4 pr-11 rounded-2xl bg-slate-900 border border-slate-800 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
             />

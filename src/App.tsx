@@ -11,7 +11,7 @@ import { checkDailyReminder } from './services/notifications';
 import { UserProfile } from './types/finance';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabType>('agente');
+  const [activeTab, setActiveTab] = useState<TabType>('estadisticas');
   const [profile, setProfile] = useState<UserProfile>(getUserProfile());
 
   const refreshProfile = () => {
@@ -41,10 +41,10 @@ export default function App() {
       <Header profile={profile} onOpenSettings={() => setActiveTab('ajustes')} />
 
       {/* Main View Container */}
-      <main className="flex-1 max-w-xl w-full mx-auto px-4 pt-3">
+      <main className="flex-1 max-w-xl w-full mx-auto px-4 pt-2 overflow-hidden flex flex-col">
+        {activeTab === 'estadisticas' && <StatsTab />}
         {activeTab === 'agente' && <AgentTab profile={profile} />}
         {activeTab === 'historial' && <HistoryTab />}
-        {activeTab === 'estadisticas' && <StatsTab />}
         {activeTab === 'ajustes' && <SettingsTab profile={profile} />}
       </main>
 
