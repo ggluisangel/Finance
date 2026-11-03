@@ -13,7 +13,7 @@ export const Header: React.FC<HeaderProps> = ({ profile, onOpenSettings, onLogou
   const isOnline = useOnlineStatus();
 
   return (
-    <header className="sticky top-0 z-30 bg-slate-950/85 backdrop-blur-xl border-b border-slate-800/80 px-4 py-3 transition-colors">
+    <header className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80 px-4 pt-safe pb-3 transition-colors">
       <div className="max-w-xl mx-auto flex items-center justify-between">
         {/* User Info & App Title */}
         <div className="flex items-center gap-3">
