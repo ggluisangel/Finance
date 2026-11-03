@@ -71,7 +71,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500/30 selection:text-emerald-200 flex flex-col">
+    <div className="h-screen w-screen fixed inset-0 bg-slate-950 text-slate-100 font-sans flex flex-col overflow-hidden select-none">
       {/* Mandatory Auth Modal if not logged in */}
       {!isAuthenticated && <AuthModal onLoginSuccess={handleLoginSuccess} />}
 
@@ -85,8 +85,8 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      {/* Main View Container */}
-      <main className="flex-1 max-w-xl w-full mx-auto px-4 pt-2 overflow-hidden flex flex-col">
+      {/* Main Screen Container - Zero Page Scroll */}
+      <main className="flex-1 max-w-xl w-full mx-auto px-3 py-1 overflow-hidden flex flex-col justify-between">
         {activeTab === 'estadisticas' && <StatsTab />}
         {activeTab === 'agente' && <AgentTab profile={profile} />}
         {activeTab === 'historial' && <HistoryTab />}

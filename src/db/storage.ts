@@ -1,9 +1,9 @@
 import { UserProfile, Transaction, ChatMessage, CategorySummary, DailySummary } from '../types/finance';
 
-const PROFILE_KEY = 'finan_ai_user_profile_sqlite_v1';
-const TRANSACTIONS_KEY = 'finan_ai_transactions_sqlite_v1';
-const CHAT_HISTORY_KEY = 'finan_ai_chat_history_sqlite_v1';
-const SESSION_KEY = 'finan_ai_auth_session_sqlite_v1';
+const PROFILE_KEY = 'finan_ai_user_profile_clean_v5';
+const TRANSACTIONS_KEY = 'finan_ai_transactions_clean_v5';
+const CHAT_HISTORY_KEY = 'finan_ai_chat_history_clean_v5';
+const SESSION_KEY = 'finan_ai_auth_session_clean_v5';
 
 export const DEFAULT_PROFILE: UserProfile = {
   id: '',
@@ -39,8 +39,8 @@ export function getStoredSession(): { userId: string; username: string } | null 
 export function saveSessionData(data: { user: UserProfile; transactions: Transaction[]; chatMessages: ChatMessage[] }) {
   localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: data.user.id, username: data.user.name }));
   localStorage.setItem(PROFILE_KEY, JSON.stringify(data.user));
-  localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(data.transactions));
-  localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(data.chatMessages));
+  localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(data.transactions || []));
+  localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(data.chatMessages || []));
   emitChange();
 }
 
@@ -92,7 +92,7 @@ export function saveUserProfile(profile: Partial<UserProfile>): UserProfile {
   return updated;
 }
 
-// Transactions API
+// Transactions API (Starts cleanly at 0)
 export function getTransactions(): Transaction[] {
   try {
     const raw = localStorage.getItem(TRANSACTIONS_KEY);
@@ -225,7 +225,7 @@ export function clearChatHistory() {
   }
 }
 
-// Variable Income Cash Flow Summary Calculations
+// Variable Income Cash Flow Summary Calculations (Clean 0 Balance)
 export function getFinancialSummary(year?: number, month?: number) {
   const txs = getTransactions();
   const profile = getUserProfile();

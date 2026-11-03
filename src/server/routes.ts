@@ -31,62 +31,19 @@ router.post('/auth/register', (req, res) => {
       VALUES (?, ?, ?, 'CUP ($)', 0, 'gemini', 'https://api.ollama.com', 'llama3.2', ?)
     `).run(userId, cleanUser, password.trim(), nowIso);
 
-    // Initial Seed Transactions
-    const seedTxs = [
-      {
-        id: genId('tx'),
-        userId,
-        title: 'Trabajo / Venta inicial en efectivo',
-        amount: 15000,
-        type: 'income',
-        category: 'Trabajos & Servicios',
-        notes: 'Entrada inicial en efectivo',
-        date: nowIso
-      },
-      {
-        id: genId('tx'),
-        userId,
-        title: 'Gasolina y pasajes de botero',
-        amount: 1800,
-        type: 'expense',
-        category: 'Transporte & Boteros',
-        notes: 'Botero y gasolina',
-        date: nowIso
-      },
-      {
-        id: genId('tx'),
-        userId,
-        title: 'Mandados de la bodega y viandas',
-        amount: 2500,
-        type: 'expense',
-        category: 'Bodega & Alimentos',
-        notes: 'Mandados de la semana',
-        date: nowIso
-      }
-    ];
-
-    const insertTx = db.prepare(`
-      INSERT INTO transactions (id, user_id, title, amount, type, category, notes, date, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    seedTxs.forEach(t => {
-      insertTx.run(t.id, t.userId, t.title, t.amount, t.type, t.category, t.notes, t.date, nowIso);
-    });
-
-    // Initial Seed Welcome Message
-    const seedMsg = {
+    // Initial Welcome Message with 0 CUP balance
+    const welcomeMsg = {
       id: genId('msg'),
       userId,
       role: 'agent',
-      content: `🇨🇺 ¡Hola ${username}! Tu cuenta y datos en efectivo están guardados de forma segura en la base de datos del servidor SQLite.\n\nPuedes ver tus movimientos sin conexión en la PWA en cualquier momento.`,
+      content: `🇨🇺 ¡Hola ${username}! Tu cuenta está lista y totalmente limpia en la base de datos (0 CUP).\n\nCada vez que generes o gastes dinero en efectivo, escríbeme o háblame por voz y actualizaré tu cuenta.`,
       timestamp: nowIso
     };
 
     db.prepare(`
       INSERT INTO chat_messages (id, user_id, role, content, timestamp)
       VALUES (?, ?, ?, ?, ?)
-    `).run(seedMsg.id, seedMsg.userId, seedMsg.role, seedMsg.content, seedMsg.timestamp);
+    `).run(welcomeMsg.id, welcomeMsg.userId, welcomeMsg.role, welcomeMsg.content, welcomeMsg.timestamp);
 
     const userProfile = {
       id: userId,
@@ -105,16 +62,8 @@ router.post('/auth/register', (req, res) => {
     res.json({
       success: true,
       user: userProfile,
-      transactions: seedTxs.map(t => ({
-        id: t.id,
-        title: t.title,
-        amount: t.amount,
-        type: t.type,
-        category: t.category,
-        notes: t.notes,
-        date: t.date
-      })),
-      chatMessages: [seedMsg]
+      transactions: [], // Clean 0 transactions
+      chatMessages: [welcomeMsg]
     });
   } catch (err: any) {
     console.error('Registration error:', err);
@@ -356,7 +305,7 @@ router.delete('/chat/clear/:userId', (req, res) => {
   }
 });
 
-// 9. AGENT CHAT API (Server-side AI execution + SQLite persistence)
+// 9. AGENT CHAT API
 router.post('/agent', async (req, res) => {
   const { userId, prompt } = req.body;
 
